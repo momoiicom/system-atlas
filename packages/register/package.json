@@ -1,5 +1,5 @@
 {
-  "name": "@atlas/register",
+  "name": "@system-atlas/register",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -7,6 +7,7 @@
     "./runtime": "./dist/runtime.js"
   },
   "files": ["dist", "!dist/**/*.test.*"],
+  "publishConfig": {"access": "public"},
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",

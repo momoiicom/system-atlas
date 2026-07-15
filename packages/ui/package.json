@@ -1,11 +1,12 @@
 {
-  "name": "@atlas/ui",
+  "name": "@system-atlas/ui",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "files": [
     "dist"
   ],
-  "description": "Browser workspace served by @atlas/server",
+  "description": "Browser workspace served by @system-atlas/server",
   "scripts": {
     "build": "rm -rf dist && mkdir -p dist && cp src/index.html src/styles.css dist/ && esbuild src/app.js --bundle --format=esm --platform=browser --target=es2022 --outfile=dist/app.js && cp ../../node_modules/elkjs/lib/elk.bundled.js dist/elk.bundled.js",
     "check": "node --check src/app.js"

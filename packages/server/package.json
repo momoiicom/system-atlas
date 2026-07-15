@@ -1,11 +1,12 @@
 {
-  "name": "@atlas/server",
+  "name": "@system-atlas/server",
   "version": "0.1.0",
   "type": "module",
   "bin": {"atlas": "./dist/cli.js"},
   "files": ["dist", "!dist/**/*.test.*"],
+  "publishConfig": {"access": "public"},
   "scripts": {
-    "build": "npm run build --workspace @atlas/ui && tsc -p tsconfig.json && rm -rf dist/ui && mkdir -p dist/ui && cp -R ../ui/dist/. dist/ui/",
+    "build": "npm run build --workspace @system-atlas/ui && tsc -p tsconfig.json && rm -rf dist/ui && mkdir -p dist/ui && cp -R ../ui/dist/. dist/ui/",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/**/*.test.js"
   },

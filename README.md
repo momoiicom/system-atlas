@@ -2,6 +2,8 @@
 
 Local-only observability for TypeScript Node projects. It instruments exported functions at module load, stores spans in `.atlas/atlas.db`, and provides a live browser graph at `127.0.0.1`.
 
+![System Atlas runtime map showing recent traces, module relationships, source intent, and observed behavior](docs/images/system-atlas-dashboard.png)
+
 ## Requirements
 
 - Node 20.6 or later
@@ -26,13 +28,13 @@ Loader ordering is intentional: put the TypeScript loader first and Atlas second
 ## In a target project
 
 ```sh
-npm i -D @atlas/register @atlas/server
+npm i -D @system-atlas/register @system-atlas/server
 ```
 
 ```json
 {
   "scripts": {
-    "dev": "node --enable-source-maps --import tsx --import @atlas/register ./src/main.ts"
+    "dev": "node --enable-source-maps --import tsx --import @system-atlas/register ./src/main.ts"
   }
 }
 ```

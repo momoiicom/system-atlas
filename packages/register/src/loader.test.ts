@@ -11,7 +11,7 @@ test("transforms ESM exports and emits an inline source map", () => {
 
 test("transforms CommonJS function exports", () => {
   const output = transformSource("exports.add = function add(a, b) { return a + b; };", resolve(process.cwd(), "math.cjs"), "commonjs")!;
-  assert.match(output, /globalThis\[Symbol\.for\("@atlas\/runtime"\)\]/);
+  assert.match(output, /globalThis\[Symbol\.for\("@system-atlas\/runtime"\)\]/);
   assert.match(output, /__atlas_runtime\.wrap/);
 });
 

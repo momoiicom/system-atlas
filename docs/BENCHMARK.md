@@ -5,7 +5,7 @@ Run on 2026-07-13 with Node 24.18.0, the included Express demo, and 400 sequenti
 | Mode | Median for 400 requests | Median/request |
 | --- | ---: | ---: |
 | Baseline TypeScript demo | 656.827 ms | 1.642 ms |
-| Demo with @atlas/register | 671.682 ms | 1.679 ms |
+| Demo with @system-atlas/register | 671.682 ms | 1.679 ms |
 
 The measured median overhead is **2.26%**, below the v0.1 10% target.
 

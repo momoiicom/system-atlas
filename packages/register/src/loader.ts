@@ -7,7 +7,7 @@ import { minimatch } from "minimatch";
 import { atlasConfig } from "./config.js";
 
 const ownPath = fileURLToPath(new URL(".", import.meta.url));
-const skipped = /node_modules|@atlas[\\/]register|\.json$|\.wasm$/;
+const skipped = /node_modules|@system-atlas[\\/]register|\.json$|\.wasm$/;
 
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
   return ts.canHaveModifiers(node) && !!ts.getModifiers(node)?.some((modifier) => modifier.kind === kind);
@@ -106,8 +106,8 @@ export function transformSource(source: string, filename: string, format: string
   }
   if (!changed) return null;
   const prelude = format === "commonjs"
-    ? "const " + runtime + " = globalThis[Symbol.for(\"@atlas/runtime\")]();\n"
-    : "import { getAtlasRuntime as __atlas_get_runtime } from \"@atlas/register/runtime\";\nconst " + runtime + " = __atlas_get_runtime();\n";
+    ? "const " + runtime + " = globalThis[Symbol.for(\"@system-atlas/runtime\")]();\n"
+    : "import { getAtlasRuntime as __atlas_get_runtime } from \"@system-atlas/register/runtime\";\nconst " + runtime + " = __atlas_get_runtime();\n";
   edit.prepend(prelude);
   const map = edit.generateMap({ hires: true, includeContent: true, source: filename, file: filename + ".map" }).toString();
   return edit.toString() + "\n//# sourceMappingURL=data:application/json;base64," + Buffer.from(map).toString("base64") + "\n";
