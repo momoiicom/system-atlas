@@ -1,0 +1,21 @@
+{
+  "name": "system-atlas",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@10.8.2",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "demo:install": "npm install --prefix examples/express-demo",
+    "demo:app": "npm run dev --prefix examples/express-demo",
+    "demo:atlas": "node packages/server/dist/cli.js --project examples/express-demo"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

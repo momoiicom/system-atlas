@@ -1,0 +1,24 @@
+{
+  "name": "@atlas/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "description": "Browser workspace served by @atlas/server",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp src/index.html src/styles.css dist/ && esbuild src/app.js --bundle --format=esm --platform=browser --target=es2022 --outfile=dist/app.js && cp ../../node_modules/elkjs/lib/elk.bundled.js dist/elk.bundled.js",
+    "check": "node --check src/app.js"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@lezer/highlight": "^1.2.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

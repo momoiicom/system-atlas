@@ -1,0 +1,22 @@
+{
+  "name": "@atlas/register",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/register.js",
+    "./runtime": "./dist/runtime.js"
+  },
+  "files": ["dist", "!dist/**/*.test.*"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "magic-string": "^0.30.17",
+    "minimatch": "^10.0.1",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {"@types/better-sqlite3": "^7.6.12"}
+}

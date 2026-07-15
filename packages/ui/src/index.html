@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>System Atlas</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wordmark"><span class="mark"></span><span>System Atlas</span><small>local trace map</small></div>
+      <div class="top-actions"><button id="refresh-graph">Refresh static map</button><span id="connection" class="status">connecting</span></div>
+    </header>
+    <main>
+      <aside class="rail">
+        <div class="rail-heading"><span>Recent traces</span><div class="rail-actions"><button id="clear-traces">Clear</button><button id="refresh">Refresh</button></div></div>
+        <ol id="traces" class="trace-list"><li class="empty">Waiting for the first call.</li></ol>
+      </aside>
+      <section class="map-region">
+        <div class="map-heading">
+          <div><h1>Runtime map</h1><p id="map-summary">No modules observed yet</p></div>
+          <div class="map-heading-actions">
+            <label class="test-toggle"><input id="show-tests" type="checkbox"><span id="show-tests-label">Show tests</span></label>
+            <div class="legend"><span><i class="live"></i>live</span><span><i class="ghost"></i>ghost</span><span><i class="rogue"></i>rogue</span></div>
+          </div>
+        </div>
+        <div class="map-shell">
+          <div id="map" class="map">
+            <div id="map-content" class="map-content">
+              <div id="map-scene" class="map-scene">
+                <canvas id="edges"></canvas>
+                <div id="nodes"></div>
+              </div>
+            </div>
+          </div>
+          <div id="empty-map" class="empty-map">Start the instrumented app, then exercise a route.<br><span>Observed modules and static imports will appear here.</span></div>
+          <div class="zoom-controls">
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <output id="zoom-level">100%</output>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+      </section>
+      <aside id="detail" class="detail"><div class="detail-placeholder">Select a trace, module, or highlighted execution to inspect evidence.</div></aside>
+    </main>
+    <dialog id="source-dialog" class="source-dialog">
+      <header class="source-dialog-header">
+        <div><strong id="source-title">Source</strong><div id="source-location" class="source-location"></div></div>
+        <button id="close-source" class="source-close">Close</button>
+      </header>
+      <div id="source-code" class="source-code code-viewer"></div>
+    </dialog>
+    <script src="/elk.bundled.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

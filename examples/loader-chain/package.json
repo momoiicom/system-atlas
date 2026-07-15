@@ -1,0 +1,11 @@
+{
+  "name": "atlas-loader-chain-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "tsx": "node --import tsx --import ../../packages/register/dist/register.js src/main.ts",
+    "ts-node": "node --loader ts-node/esm --import ../../packages/register/dist/register.js src/main.ts",
+    "plain": "node --import ../../packages/register/dist/register.js dist/main.js"
+  }
+}

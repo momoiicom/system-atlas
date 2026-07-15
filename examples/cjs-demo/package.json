@@ -1,0 +1,7 @@
+{
+  "name": "atlas-cjs-demo",
+  "private": true,
+  "scripts": {
+    "run": "node --import ../../packages/register/dist/register.js main.cjs"
+  }
+}

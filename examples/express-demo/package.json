@@ -1,0 +1,8 @@
+{
+  "name": "atlas-express-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {"dev": "node --enable-source-maps --import tsx --import ../../packages/register/dist/register.js src/main.ts"},
+  "dependencies": {"express": "^4.21.2", "tsx": "^4.19.2"},
+  "devDependencies": {"@types/express": "^5.0.0", "typescript": "^5.7.2"}
+}
