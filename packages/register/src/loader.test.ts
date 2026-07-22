@@ -6,6 +6,8 @@ import { transformSource } from "./loader.js";
 test("transforms ESM exports and emits an inline source map", () => {
   const output = transformSource("export function add(a, b) { return a + b; }", resolve(process.cwd(), "src/math.ts"), "module")!;
   assert.match(output, /__atlas_runtime\.wrap/);
+  assert.match(output, /from "file:.*\/runtime\.js"/);
+  assert.doesNotMatch(output, /from "@system-atlas\/register\/runtime"/);
   assert.match(output, /sourceMappingURL=data:application\/json;base64/);
 });
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlas Debug"
+  short_description: "Browser, trace, and source debugging"
+  default_prompt: "Use $atlas-debug to reproduce this in the browser, correlate the Atlas trace with exact source, fix it, and verify both the UI and runtime behavior."

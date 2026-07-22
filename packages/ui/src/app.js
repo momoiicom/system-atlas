@@ -5,9 +5,9 @@ import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { tags } from "@lezer/highlight";
 
-const state = { graph: { modules: [], edges: [] }, traces: [], hot: new Set(), selectedTrace: null, showTests: false };
+const state = { graph: { modules: [], edges: [] }, traces: [], hot: new Set(), selectedTrace: null, showTests: false, groupFolders: false };
 const $ = (selector) => document.querySelector(selector);
-const map = $("#map"), mapContent = $("#map-content"), mapScene = $("#map-scene"), nodes = $("#nodes"), canvas = $("#edges"), detail = $("#detail"), tracesEl = $("#traces"), summary = $("#map-summary"), sourceDialog = $("#source-dialog");
+const map = $("#map"), mapContent = $("#map-content"), mapScene = $("#map-scene"), groupsEl = $("#groups"), nodes = $("#nodes"), canvas = $("#edges"), detail = $("#detail"), tracesEl = $("#traces"), summary = $("#map-summary"), sourceDialog = $("#source-dialog");
 const api = (path, options) => fetch(path, options).then((response) => response.json());
 const duration = (value) => value < 1000 ? Math.round(value) + "ms" : (value / 1000).toFixed(2) + "s";
 const text = (tag, value, className) => { const element = document.createElement(tag); element.textContent = value; if (className) element.className = className; return element; };
@@ -15,7 +15,10 @@ const elk = globalThis.ELK ? new globalThis.ELK() : null;
 let layoutRevision = 0;
 let clearReset;
 let sourceViewer;
-const zoom = { value: 1, min: 0.4, max: 2, step: 0.1, width: 0, height: 0, available: false };
+let fitMapOnNextRender = true;
+const zoom = { value: 1, min: 0.02, max: 2, step: 0.1, width: 0, height: 0, available: false, fitPadding: 24 };
+const nodeSize = { width: 204, height: 88 };
+const folderSpacing = { header: 38, padding: 14, gap: 14 };
 const mountedViewers = new WeakMap();
 const atlasHighlight = HighlightStyle.define([
   { tag: tags.comment, color: "oklch(.59 .018 255)", fontStyle: "italic" },
@@ -72,9 +75,23 @@ function disposeViewers(container) {
 }
 function replaceDetail(section) { disposeViewers(detail); detail.replaceChildren(section); }
 function clampZoom(value) { return Math.min(zoom.max, Math.max(zoom.min, value)); }
+function zoomOffset(value = zoom.value) {
+  return {
+    x: Math.max(0, (map.clientWidth - zoom.width * value) / 2),
+    y: Math.max(0, (map.clientHeight - zoom.height * value) / 2),
+  };
+}
+function fitZoomValue(width, height) {
+  const availableWidth = Math.max(1, map.clientWidth - zoom.fitPadding * 2);
+  const availableHeight = Math.max(1, map.clientHeight - zoom.fitPadding * 2);
+  return clampZoom(Math.min(1, availableWidth / width, availableHeight / height));
+}
 function updateZoomSurface() {
+  const offset = zoomOffset();
   mapScene.style.width = zoom.width + "px";
   mapScene.style.height = zoom.height + "px";
+  mapScene.style.left = offset.x + "px";
+  mapScene.style.top = offset.y + "px";
   mapScene.style.transform = "scale(" + zoom.value + ")";
   mapContent.style.width = Math.max(map.clientWidth, zoom.width * zoom.value) + "px";
   mapContent.style.height = Math.max(map.clientHeight, zoom.height * zoom.value) + "px";
@@ -84,17 +101,22 @@ function updateZoomSurface() {
 }
 function setZoom(value, anchor = { x: map.clientWidth / 2, y: map.clientHeight / 2 }) {
   const next = clampZoom(value);
-  const contentX = (map.scrollLeft + anchor.x) / zoom.value;
-  const contentY = (map.scrollTop + anchor.y) / zoom.value;
+  const before = zoomOffset();
+  const contentX = (map.scrollLeft + anchor.x - before.x) / zoom.value;
+  const contentY = (map.scrollTop + anchor.y - before.y) / zoom.value;
   zoom.value = next;
   updateZoomSurface();
-  map.scrollTo(contentX * next - anchor.x, contentY * next - anchor.y);
+  const after = zoomOffset();
+  map.scrollTo(after.x + contentX * next - anchor.x, after.y + contentY * next - anchor.y);
 }
 function setZoomLayout(width, height, available) {
   zoom.width = width;
   zoom.height = height;
   zoom.available = available;
+  const shouldFit = available && fitMapOnNextRender;
+  if (shouldFit) { zoom.value = fitZoomValue(width, height); fitMapOnNextRender = false; }
   updateZoomSurface();
+  if (shouldFit) map.scrollTo(0, 0);
 }
 
 async function refresh() { [state.graph, state.traces] = await Promise.all([api("/api/graph"), api("/api/traces")]); render(); }
@@ -117,7 +139,79 @@ function fallbackLayout(modules, edges) {
   const positions = new Map(); [...columns.keys()].sort((a, b) => a - b).forEach((column) => columns.get(column).sort((a, b) => a.module.localeCompare(b.module)).forEach((module, row) => positions.set(module.module, { left: 32 + column * 250, top: 30 + row * 116 })));
   return { positions, width: Math.max(720, columns.size * 250 + 48), height: Math.max(440, ...[...positions.values()].map((position) => position.top + 120)) };
 }
-async function layout(modules, edges) {
+function folderFor(moduleName) {
+  const parts = moduleName.split("/");
+  return parts.length > 1 ? parts.slice(0, -1).join("/") : "project root";
+}
+function folderModels(modules) {
+  const grouped = new Map();
+  [...modules].sort((a, b) => a.module.localeCompare(b.module)).forEach((module) => {
+    const folder = folderFor(module.module);
+    grouped.set(folder, [...(grouped.get(folder) || []), module]);
+  });
+  return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([folder, children], index) => {
+    const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(children.length))));
+    const rows = Math.ceil(children.length / columns);
+    return {
+      id: "folder-" + index, folder, children, columns,
+      width: folderSpacing.padding * 2 + columns * nodeSize.width + (columns - 1) * folderSpacing.gap,
+      height: folderSpacing.header + folderSpacing.padding + rows * nodeSize.height + (rows - 1) * folderSpacing.gap,
+    };
+  });
+}
+function placeFolderModules(folder, left, top, positions) {
+  folder.children.forEach((module, index) => {
+    const column = index % folder.columns, row = Math.floor(index / folder.columns);
+    positions.set(module.module, {
+      left: left + folderSpacing.padding + column * (nodeSize.width + folderSpacing.gap),
+      top: top + folderSpacing.header + row * (nodeSize.height + folderSpacing.gap),
+    });
+  });
+}
+function fallbackGroupedLayout(modules) {
+  const folders = folderModels(modules), positions = new Map(), groupPositions = [];
+  const columns = Math.max(1, Math.ceil(Math.sqrt(folders.length)));
+  let top = 30, rowHeight = 0;
+  folders.forEach((folder, index) => {
+    const column = index % columns;
+    if (column === 0 && index) { top += rowHeight + 34; rowHeight = 0; }
+    const left = 32 + folders.slice(index - column, index).reduce((sum, previous) => sum + previous.width + 34, 0);
+    placeFolderModules(folder, left, top, positions); groupPositions.push({ ...folder, left, top }); rowHeight = Math.max(rowHeight, folder.height);
+  });
+  return {
+    positions, groups: groupPositions,
+    width: Math.max(720, ...groupPositions.map((folder) => folder.left + folder.width + 32)),
+    height: Math.max(440, ...groupPositions.map((folder) => folder.top + folder.height + 30)),
+  };
+}
+async function groupedLayout(modules, edges) {
+  const folders = folderModels(modules);
+  if (!elk) return fallbackGroupedLayout(modules);
+  const moduleFolders = new Map(folders.flatMap((folder) => folder.children.map((module) => [module.module, folder.id])));
+  const seen = new Set();
+  const folderEdges = edges.flatMap((edge) => {
+    const source = moduleFolders.get(edge.source), target = moduleFolders.get(edge.target), id = source + "->" + target;
+    if (!source || !target || source === target || seen.has(id)) return [];
+    seen.add(id); return [{ id, sources: [source], targets: [target] }];
+  });
+  const graph = await elk.layout({
+    id: "atlas-folders",
+    layoutOptions: {
+      "elk.algorithm": "layered", "elk.direction": "RIGHT", "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+      "elk.spacing.nodeNode": "34", "elk.layered.spacing.nodeNodeBetweenLayers": "66",
+    },
+    children: folders.map((folder) => ({ id: folder.id, width: folder.width, height: folder.height })),
+    edges: folderEdges,
+  });
+  const children = new Map((graph.children || []).map((child) => [child.id, child]));
+  const positions = new Map(), groupPositions = folders.map((folder) => {
+    const child = children.get(folder.id), left = (child?.x || 0) + 32, top = (child?.y || 0) + 30;
+    placeFolderModules(folder, left, top, positions); return { ...folder, left, top };
+  });
+  return { positions, groups: groupPositions, width: Math.max(720, (graph.width || 0) + 64), height: Math.max(440, (graph.height || 0) + 60) };
+}
+async function layout(modules, edges, groupFolders) {
+  if (groupFolders) return groupedLayout(modules, edges);
   if (!elk) return fallbackLayout(modules, edges);
   const graph = await elk.layout({
     id: "atlas",
@@ -128,7 +222,7 @@ async function layout(modules, edges) {
       "elk.spacing.nodeNode": "28",
       "elk.layered.spacing.nodeNodeBetweenLayers": "46",
     },
-    children: modules.map((module) => ({ id: module.module, width: 204, height: 88 })),
+    children: modules.map((module) => ({ id: module.module, width: nodeSize.width, height: nodeSize.height })),
     edges: edges.filter((edge) => edge.source !== edge.target).map((edge) => ({ id: edge.source + "->" + edge.target, sources: [edge.source], targets: [edge.target] })),
   });
   const positions = new Map((graph.children || []).map((child) => [child.id, { left: (child.x || 0) + 32, top: (child.y || 0) + 30 }]));
@@ -141,10 +235,18 @@ async function renderMap() {
   const visible = new Set(modules.map((module) => module.module));
   const edges = state.graph.edges.filter((edge) => visible.has(edge.source) && visible.has(edge.target));
   const testToggle = $("#show-tests"); testToggle.disabled = testCount === 0; $("#show-tests-label").textContent = "Show tests" + (testCount ? " (" + testCount + ")" : "");
-  summary.textContent = modules.length ? modules.length + " modules · " + edges.length + " overlay edges" : "No modules observed yet";
-  $("#empty-map").hidden = !!modules.length; nodes.replaceChildren(); if (!modules.length) { setZoomLayout(0, 0, false); return; }
-  const result = await layout(modules, edges); if (revision !== layoutRevision) return;
+  const folderCount = new Set(modules.map((module) => folderFor(module.module))).size;
+  summary.textContent = modules.length ? modules.length + " modules" + (state.groupFolders ? " in " + folderCount + " folders" : "") + " · " + edges.length + " overlay edges" : "No modules observed yet";
+  $("#empty-map").hidden = !!modules.length; groupsEl.replaceChildren(); nodes.replaceChildren(); if (!modules.length) { setZoomLayout(0, 0, false); return; }
+  const result = await layout(modules, edges, state.groupFolders); if (revision !== layoutRevision) return;
   result.edges = edges;
+  (result.groups || []).forEach((folder) => {
+    const group = document.createElement("div"); group.className = "folder-group";
+    group.style.left = folder.left + "px"; group.style.top = folder.top + "px"; group.style.width = folder.width + "px"; group.style.height = folder.height + "px";
+    const header = document.createElement("div"); header.className = "folder-group-header";
+    header.append(text("span", folder.folder, "folder-group-name"), text("span", folder.children.length + (folder.children.length === 1 ? " module" : " modules"), "folder-group-count"));
+    group.append(header); groupsEl.append(group);
+  });
   nodes.style.width = result.width + "px"; nodes.style.height = result.height + "px";
   setZoomLayout(result.width, result.height, true);
   modules.forEach((module) => {
@@ -160,7 +262,7 @@ function drawEdges(layoutResult) {
   const width = layoutResult.width, height = layoutResult.height, scale = devicePixelRatio, context = canvas.getContext("2d"); canvas.width = width * scale; canvas.height = height * scale; canvas.style.width = width + "px"; canvas.style.height = height + "px"; context.scale(scale, scale); context.clearRect(0, 0, width, height);
   layoutResult.edges.forEach((edge) => {
     const from = layoutResult.positions.get(edge.source), to = layoutResult.positions.get(edge.target); if (!from || !to) return;
-    const same = edge.source === edge.target, x1 = from.left + 204, y1 = from.top + 43, x2 = same ? from.left + 204 : to.left, y2 = same ? from.top + 78 : to.top + 43;
+    const same = edge.source === edge.target, x1 = from.left + nodeSize.width, y1 = from.top + 43, x2 = same ? from.left + nodeSize.width : to.left, y2 = same ? from.top + 78 : to.top + 43;
     context.save(); context.lineWidth = Math.min(4, 1 + Math.log2(edge.calls + 1)); context.strokeStyle = edge.kind === "rogue" ? "rgba(239,83,80,.85)" : edge.kind === "ghost" ? "rgba(146,152,170,.55)" : "rgba(225,111,64,.7)";
     if (edge.kind === "ghost") context.setLineDash([5, 5]); context.beginPath(); context.moveTo(x1, y1);
     if (same) context.bezierCurveTo(x1 + 36, y1, x1 + 36, y2, x2, y2); else context.bezierCurveTo(x1 + 22, y1, x2 - 22, y2, x2, y2); context.stroke(); context.restore();
@@ -213,7 +315,7 @@ function showFunction(module, row) {
   const section = document.createElement("section"); section.append(text("h2", row.fn), text("div", module, "sub"), descriptionBlock(row.description, module, row.fn), text("h3", "Observed behavior"), text("div", row.calls + " calls · p50 " + duration(row.p50) + " · p95 " + duration(row.p95) + " · " + Math.round(row.errorRate * 100) + "% error rate", "muted")); replaceDetail(section);
 }
 document.addEventListener("click", (event) => { const target = event.target.closest("[data-trace],[data-span],[data-module]"); if (!target) return; if (target.dataset.trace) showTrace(target.dataset.trace); if (target.dataset.span) showSpan(target.dataset.span); if (target.dataset.module) showModule(target.dataset.module); });
-$("#refresh").addEventListener("click", refresh); $("#refresh-graph").addEventListener("click", async () => { await api("/api/graph/refresh", { method: "POST" }); refresh(); }); window.addEventListener("resize", renderMap);
+$("#refresh").addEventListener("click", refresh); $("#refresh-graph").addEventListener("click", async () => { await api("/api/graph/refresh", { method: "POST" }); fitMapOnNextRender = true; refresh(); }); window.addEventListener("resize", renderMap);
 $("#zoom-out").addEventListener("click", () => setZoom(zoom.value - zoom.step));
 $("#zoom-in").addEventListener("click", () => setZoom(zoom.value + zoom.step));
 map.addEventListener("wheel", (event) => {
@@ -238,7 +340,8 @@ $("#clear-traces").addEventListener("click", async (event) => {
   state.selectedTrace = null; state.hot.clear(); disposeViewers(detail); detail.replaceChildren(text("div", result.deletedTraces ? result.deletedTraces + " traces cleared." : "No traces to clear.", "detail-placeholder"));
   button.classList.remove("confirm"); button.disabled = false; button.textContent = "Clear"; await refresh();
 });
-$("#show-tests").addEventListener("change", (event) => { state.showTests = event.target.checked; renderMap(); });
+$("#show-tests").addEventListener("change", (event) => { state.showTests = event.target.checked; fitMapOnNextRender = true; renderMap(); });
+$("#group-folders").addEventListener("change", (event) => { state.groupFolders = event.target.checked; fitMapOnNextRender = true; renderMap(); });
 function closeSource() { sourceViewer?.destroy(); sourceViewer = undefined; $("#source-code").replaceChildren(); sourceDialog.close(); }
 $("#close-source").addEventListener("click", closeSource); sourceDialog.addEventListener("click", (event) => { if (event.target === sourceDialog) closeSource(); });
 const socket = new WebSocket((location.protocol === "https:" ? "wss" : "ws") + "://" + location.host + "/ws");

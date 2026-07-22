@@ -20,7 +20,8 @@
         <div class="map-heading">
           <div><h1>Runtime map</h1><p id="map-summary">No modules observed yet</p></div>
           <div class="map-heading-actions">
-            <label class="test-toggle"><input id="show-tests" type="checkbox"><span id="show-tests-label">Show tests</span></label>
+            <label class="map-toggle"><input id="group-folders" type="checkbox"><span>Group folders</span></label>
+            <label class="map-toggle"><input id="show-tests" type="checkbox"><span id="show-tests-label">Show tests</span></label>
             <div class="legend"><span><i class="live"></i>live</span><span><i class="ghost"></i>ghost</span><span><i class="rogue"></i>rogue</span></div>
           </div>
         </div>
@@ -28,6 +29,7 @@
           <div id="map" class="map">
             <div id="map-content" class="map-content">
               <div id="map-scene" class="map-scene">
+                <div id="groups"></div>
                 <canvas id="edges"></canvas>
                 <div id="nodes"></div>
               </div>

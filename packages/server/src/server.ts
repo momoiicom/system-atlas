@@ -17,11 +17,15 @@ function asEvent(row: EventRow) { return { rowid: row.rowid, traceId: row.trace_
 function edgeKey(source: string, target: string) { return source + "\0" + target; }
 function withoutSource<T extends { source?: unknown }>(value: T) { const { source, ...rest } = value; return rest; }
 
-export function openAtlasDb(projectRoot = process.cwd()): Database.Database {
-  const dbPath = resolve(projectRoot, process.env.ATLAS_DB_PATH || atlasFileConfig(projectRoot).dbPath || ".atlas/atlas.db");
+export function resolveAtlasDbPath(projectRoot = process.cwd(), explicitPath?: string) {
+  return resolve(projectRoot, explicitPath || process.env.ATLAS_DB_PATH || atlasFileConfig(projectRoot).dbPath || ".atlas/atlas.db");
+}
+
+export function openAtlasDb(projectRoot = process.cwd(), options: { readonly?: boolean; dbPath?: string } = {}): Database.Database {
+  const dbPath = resolveAtlasDbPath(projectRoot, options.dbPath);
   if (!existsSync(dbPath)) throw new Error("No Atlas database at " + dbPath + ". Start the instrumented app once first.");
-  const db = new Database(dbPath, { fileMustExist: true });
-  db.pragma("journal_mode = WAL");
+  const db = new Database(dbPath, { fileMustExist: true, readonly: options.readonly ?? false });
+  if (!options.readonly) db.pragma("journal_mode = WAL");
   return db;
 }
 
